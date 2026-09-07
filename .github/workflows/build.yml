@@ -1,4 +1,4 @@
-name: Build Android APK Manually
+name: Build Android APK Advanced
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Set up Python
@@ -19,36 +19,65 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Cache Buildozer Global Directory
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildozer
+          ~/.local
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-${{ hashFiles('*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
+
+    - name: Install System & i386 Dependencies
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
         sudo apt-get install -y \
             git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev libstdc++6:i386 libreadline8:i386
-        pip install --upgrade pip
-        pip install --user Cython==0.29.33 buildozer
+            zlib1g-dev libncurses5-dev libstdc++6:i386 libreadline8:i386 \
+            build-essential ccache libffi-dev libssl-dev patchelf
 
-    - name: Build with Buildozer
+    - name: Install Python Build Tools
       run: |
-        # SDK ve lisans klasörlerini oluştur
-        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-        echo -e "\n24333f8a43b68162121db9d35946101f960e90d" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+        python3 -m pip install --upgrade pip
+        pip install --user --upgrade Cython==0.29.33 buildozer
 
-        # Eksik olan cmdline-tools (sdkmanager) aracını manuel indir ve kur
+    - name: Preconfigure Android SDK & Tools
+      run: |
         SDK_DIR="$HOME/.buildozer/android/platform/android-sdk"
-        mkdir -p "$SDK_DIR/cmdline-tools/latest"
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip -q cmdline-tools.zip -d temp_tools
-        mv temp_tools/cmdline-tools/* "$SDK_DIR/cmdline-tools/latest/"
-        rm -rf cmdline-tools.zip temp_tools
+        mkdir -p "$SDK_DIR/licenses"
+        
+        # Otomatik SDK lisansları
+        echo -e "\n24333f8a43b68162121db9d35946101f960e90d" > "$SDK_DIR/licenses/android-sdk-license"
+        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" >> "$SDK_DIR/licenses/android-sdk-license"
+        echo -e "\nd56f5187479451eabf01fb78af6dfcb131a648cd" >> "$SDK_DIR/licenses/android-sdk-license"
 
-        # Buildozer'ı çalıştır
+        # Komut satırı araçlarını kur ve yolları sabitle
+        mkdir -p "$SDK_DIR/cmdline-tools/latest"
+        if [ ! -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+            unzip -q cmdline-tools.zip -d temp_tools
+            rm -rf "$SDK_DIR/cmdline-tools/latest/*"
+            mv temp_tools/cmdline-tools/* "$SDK_DIR/cmdline-tools/latest/"
+            rm -rf cmdline-tools.zip temp_tools
+        fi
+
+        # Eski sürümlerin aradığı dizinleri sembolik bağ ile eşitle
+        mkdir -p "$SDK_DIR/tools/bin"
+        ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
+        ln -sf "$SDK_DIR/cmdline-tools/latest/bin/avdmanager" "$SDK_DIR/tools/bin/avdmanager"
+
+    - name: Build Android APK with Buildozer
+      env:
+        PATH: ${{ github.workspace }}/bin:/home/runner/.local/bin:$PATH
+      run: |
+        # Buildozer önbellek izinlerini güvenceye al
+        chmod -R 777 ~/.buildozer || true
         ~/.local/bin/buildozer -v android debug
 
-    - name: Upload APK
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: package
+        name: safedrive-apk-release
         path: bin/*.apk
