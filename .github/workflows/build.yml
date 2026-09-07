@@ -21,15 +21,23 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Clear Corrupted Buildozer Cache
-      run: |
-        rm -rf ~/.buildozer/android/platform/build-* || true
+    - name: Cache Buildozer Global Directory
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildozer
+          ~/.local
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-${{ hashFiles('*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
 
-    - name: Install System & i386 Dependencies
+    - name: Install System Dependencies Fast
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get update -y
+        sudo apt-get install -y --no-install-recommends \
             git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libstdc++6:i386 libreadline8:i386 \
             build-essential ccache libffi-dev libssl-dev patchelf coreutils
