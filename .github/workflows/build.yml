@@ -50,12 +50,10 @@ jobs:
         SDK_DIR="$HOME/.buildozer/android/platform/android-sdk"
         mkdir -p "$SDK_DIR/licenses"
         
-        # Otomatik SDK lisansları
         echo -e "\n24333f8a43b68162121db9d35946101f960e90d" > "$SDK_DIR/licenses/android-sdk-license"
         echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" >> "$SDK_DIR/licenses/android-sdk-license"
         echo -e "\nd56f5187479451eabf01fb78af6dfcb131a648cd" >> "$SDK_DIR/licenses/android-sdk-license"
 
-        # Komut satırı araçlarını kur
         mkdir -p "$SDK_DIR/cmdline-tools/latest"
         if [ ! -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
@@ -65,23 +63,22 @@ jobs:
             rm -rf cmdline-tools.zip temp_tools
         fi
 
-        # Eski sürümlerin aradığı dizinleri bağla
         mkdir -p "$SDK_DIR/tools/bin"
         ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
         ln -sf "$SDK_DIR/cmdline-tools/latest/bin/avdmanager" "$SDK_DIR/tools/bin/avdmanager"
 
-        # AIDL ve derleme araçlarını (build-tools) sdkmanager ile zorla kur
         export PATH="$SDK_DIR/cmdline-tools/latest/bin:$PATH"
         yes | sdkmanager --sdk_root="$SDK_DIR" "platform-tools" "build-tools;34.0.0" "platforms;android-34"
-  </Step>
 
-  <Step subtitle="30 sn" title="Kaydet ve Başlat">
-Sayfanın altındaki **Commit changes** butonuna basarak kaydet ve Actions sekmesinden süreci yeniden başlat.
-  </Step>
+    - name: Build Android APK with Buildozer
+      env:
+        PATH: ${{ github.workspace }}/bin:/home/runner/.local/bin:/usr/bin:$PATH
+      run: |
+        /usr/bin/chmod -R 777 ~/.buildozer || true
+        ~/.local/bin/buildozer -v android debug
 
-</Steps>
-
-<Elicitations message="Nasıl gidiyor?">
-  <Elicitation label="Güncelledim, başlatıyorum" query="Aidl hatası için kodu güncelledim ve yeniden başlattım."/>
-  <Elicitation label="Farklı bir durum var" query="Yeni adımla ilgili farklı bir çıktı aldım."/>
-</Elicitations>
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: safedrive-apk-release
+        path: bin/*.apk
