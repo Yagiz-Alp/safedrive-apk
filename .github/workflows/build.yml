@@ -21,11 +21,11 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Clear Corrupted Buildozer Cache
+    - name: Clear Old Build Artifacts
       run: |
-        rm -rf ~/.buildozer/android/platform/build-* || true
+        rm -rf ~/.buildozer || true
 
-    - name: Install System Dependencies Fast
+    - name: Install System Dependencies
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -34,43 +34,17 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
             git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libstdc++6:i386 libreadline8:i386 \
-            build-essential ccache libffi-dev libssl-dev patchelf coreutils
+            build-essential ccache libffi-dev libssl-dev patchelf coreutils wget
 
     - name: Install Python Build Tools
       run: |
         python3 -m pip install --upgrade pip
         pip install --user --upgrade Cython==0.29.33 buildozer
 
-    - name: Preconfigure Android SDK & Tools
-      run: |
-        SDK_DIR="$HOME/.buildozer/android/platform/android-sdk"
-        mkdir -p "$SDK_DIR/licenses"
-        
-        echo -e "\n24333f8a43b68162121db9d35946101f960e90d" > "$SDK_DIR/licenses/android-sdk-license"
-        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" >> "$SDK_DIR/licenses/android-sdk-license"
-        echo -e "\nd56f5187479451eabf01fb78af6dfcb131a648cd" >> "$SDK_DIR/licenses/android-sdk-license"
-
-        mkdir -p "$SDK_DIR/cmdline-tools/latest"
-        if [ ! -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
-            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-            unzip -q cmdline-tools.zip -d temp_tools
-            rm -rf "$SDK_DIR/cmdline-tools/latest/*"
-            mv temp_tools/cmdline-tools/* "$SDK_DIR/cmdline-tools/latest/"
-            rm -rf cmdline-tools.zip temp_tools
-        fi
-
-        mkdir -p "$SDK_DIR/tools/bin"
-        ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
-        ln -sf "$SDK_DIR/cmdline-tools/latest/bin/avdmanager" "$SDK_DIR/tools/bin/avdmanager"
-
-        export PATH="$SDK_DIR/cmdline-tools/latest/bin:$PATH"
-        yes | sdkmanager --sdk_root="$SDK_DIR" "platform-tools" "build-tools;33.0.2" "platforms;android-33" "ndk;25b"
-
     - name: Build Android APK with Buildozer
       env:
         PATH: ${{ github.workspace }}/bin:/home/runner/.local/bin:/usr/bin:$PATH
       run: |
-        /usr/bin/chmod -R 777 ~/.buildozer || true
         ~/.local/bin/buildozer -v android debug
 
     - name: Upload APK Artifact
