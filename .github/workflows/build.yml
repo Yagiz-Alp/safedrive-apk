@@ -21,15 +21,9 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Cache Buildozer Global Directory
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.buildozer
-          ~/.local
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-${{ hashFiles('*.py') }}
-        restore-keys: |
-          ${{ runner.os }}-buildozer-
+    - name: Clear Corrupted Buildozer Cache
+      run: |
+        rm -rf ~/.buildozer/android/platform/build-* || true
 
     - name: Install System & i386 Dependencies
       run: |
