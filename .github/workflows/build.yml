@@ -31,9 +31,20 @@ jobs:
 
     - name: Build with Buildozer
       run: |
+        # SDK ve lisans klasörlerini oluştur
         mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
         echo -e "\n24333f8a43b68162121db9d35946101f960e90d" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
         echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+
+        # Eksik olan cmdline-tools (sdkmanager) aracını manuel indir ve kur
+        SDK_DIR="$HOME/.buildozer/android/platform/android-sdk"
+        mkdir -p "$SDK_DIR/cmdline-tools/latest"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q cmdline-tools.zip -d temp_tools
+        mv temp_tools/cmdline-tools/* "$SDK_DIR/cmdline-tools/latest/"
+        rm -rf cmdline-tools.zip temp_tools
+
+        # Buildozer'ı çalıştır
         ~/.local/bin/buildozer -v android debug
 
     - name: Upload APK
