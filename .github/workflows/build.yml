@@ -68,7 +68,7 @@ jobs:
         ln -sf "$SDK_DIR/cmdline-tools/latest/bin/avdmanager" "$SDK_DIR/tools/bin/avdmanager"
 
         export PATH="$SDK_DIR/cmdline-tools/latest/bin:$PATH"
-        yes | sdkmanager --sdk_root="$SDK_DIR" "platform-tools" "build-tools;34.0.0" "platforms;android-34"
+        yes | sdkmanager --sdk_root="$SDK_DIR" "platform-tools" "build-tools;34.0.0" "platforms;android-34" "ndk;25.2.9519653"
 
     - name: Build Android APK with Buildozer
       env:
